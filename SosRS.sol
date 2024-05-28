@@ -9,6 +9,7 @@ contract SosRS {
 
     event DonationReceived(address indexed contributor, uint256 amount, uint256 timestamp);
     event WithdrawExecuted(address indexed recipient, uint256 amount, uint256 timestamp);
+    event OwnershipTransferred(address indexed oldOwner, address indexed newOwner, uint timestamp);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner");
@@ -31,8 +32,13 @@ contract SosRS {
         payable(msg.sender).transfer(_amount);
         emit WithdrawExecuted(msg.sender, _amount, block.timestamp);
     }
-
-    //transferOwnership
+    
+    function transferOwnership(address _newOwner) external onlyOwner {
+        require(_newOwner != address(0), "Invalid new owner");
+        address oldOwner = owner;
+        owner = _newOwner;
+        emit OwnershipTransferred(oldOwner, _newOwner, block.timestamp);
+    }
 
     //closeCampaign
 
