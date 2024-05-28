@@ -21,18 +21,18 @@ contract SosRS {
     }
 
     function donate(uint256 _amount) payable external {
-        deposits[msg.sender] += msg.value;
-        donationBalance += msg.value;
+        deposits[msg.sender] += _amount;
+        donationBalance += _amount;
         emit DonationReceived(msg.sender, _amount, block.timestamp);
     }
 
-    function withdraw(uint256 _amount) external payable onlyOwner {
+    function withdraw(uint256 _amount) external onlyOwner {
         require(_amount > donationBalance, "Insufficient balance");
-        donationBalance -= msg.value;
+        donationBalance -= _amount;
         payable(msg.sender).transfer(_amount);
         emit WithdrawExecuted(msg.sender, _amount, block.timestamp);
     }
-    
+
     function transferOwnership(address _newOwner) external onlyOwner {
         require(_newOwner != address(0), "Invalid new owner");
         address oldOwner = owner;
