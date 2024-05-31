@@ -25,23 +25,21 @@ contract SosRS {
     }
 
     function donate(uint256 _amount) payable external {
-        require(_amount > 0, "Invalid donation amount");
+        if(block.timestamp >= DEADLINE){ isCampaignClosed = true;}
         require(!isCampaignClosed, "Campaign is no longer active");
+        require(_amount > 0, "Invalid donation amount");
 
         deposits[msg.sender] += _amount;
         donationBalance += _amount;
         emit DonationReceived(msg.sender, _amount, block.timestamp);
-
-        if(block.timestamp >= DEADLINE){
-            isCampaignClosed = true;
-        }
     }
 
     function withdraw(uint256 _amount) external onlyOwner {
+        require(donationBalance > 0, "No funds to withdraw");
         require(_amount > donationBalance, "Insufficient balance");
         donationBalance -= _amount;
-        payable(msg.sender).transfer(_amount);
-        emit WithdrawExecuted(msg.sender, _amount, block.timestamp);
+        payable(owner).transfer(_amount);
+        emit WithdrawExecuted(owner, _amount, block.timestamp);
     }
 
     function transferOwnership(address _newOwner) external onlyOwner {

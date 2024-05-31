@@ -49,5 +49,27 @@ describe("SosRS", function () {
       latestBlockTimestamp = (await hre.ethers.provider.getBlock('latest'))?.timestamp;
       expect(await contract.donate).to.emit(contract, "DonationReceived").withArgs(addr2, 2, latestBlockTimestamp);
     });
+
+    it("Should be reverted in case of donated amount <= 0", async function(){
+      const {contract} = await loadFixture(deployFixture);
+
+      await expect(contract.donate(0)).to.be.revertedWith("Invalid donation amount");     
+    });
+
+    it("Should be reverted in case of donation after campaign closure", async function(){
+      const {contract} = await loadFixture(deployFixture);
+
+      await contract.forceCampaignClosure();
+      await expect(contract.donate(1)).to.be.revertedWith("Campaign is no longer active"); 
+    });
+  });
+
+  describe("withdraw", function () {
+  //withdraw required amount as owner
+  //withdraw multiple times in sequence as owner
+
+    it("Should emit event with right parameters after withdraw", async function(){
+
+    });
   });
 });
