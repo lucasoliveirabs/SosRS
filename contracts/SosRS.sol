@@ -21,6 +21,7 @@ contract SosRS {
     }
 
     function donate(uint256 _amount) payable external {
+        require(_amount > 0, "Invalid donation amount");
         deposits[msg.sender] += _amount;
         donationBalance += _amount;
         emit DonationReceived(msg.sender, _amount, block.timestamp);
