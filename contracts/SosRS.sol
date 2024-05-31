@@ -6,6 +6,10 @@ contract SosRS {
     address public owner;
     uint256 public donationBalance;
     mapping(address => uint256) public deposits;
+    bool public isCampaignClosed;
+
+    uint128 public constant DONATION_GOAL = 40 ether;
+    uint32 public constant DEADLINE = 1720180800;
 
     event DonationReceived(address indexed contributor, uint256 amount, uint256 timestamp);
     event WithdrawExecuted(address indexed recipient, uint256 amount, uint256 timestamp);
@@ -22,9 +26,15 @@ contract SosRS {
 
     function donate(uint256 _amount) payable external {
         require(_amount > 0, "Invalid donation amount");
+        require(!isCampaignClosed, "Campaign is no longer active");
+
         deposits[msg.sender] += _amount;
         donationBalance += _amount;
         emit DonationReceived(msg.sender, _amount, block.timestamp);
+
+        if(block.timestamp >= DEADLINE){
+            isCampaignClosed = true;
+        }
     }
 
     function withdraw(uint256 _amount) external onlyOwner {
@@ -41,9 +51,7 @@ contract SosRS {
         emit OwnershipTransferred(oldOwner, _newOwner, block.timestamp);
     }
 
-    //closeCampaign
-
-    //checkDeadlineReached
-
-    //checkGoalReached
+    function forceCampaignClosure() external onlyOwner {
+        isCampaignClosed = true;
+    }
 }
