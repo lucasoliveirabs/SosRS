@@ -54,4 +54,8 @@ contract SosRS {
     function forceCampaignClosure() external onlyOwner {
         isCampaignClosed = true;
     }
+
+    function isDonationGoalReached() external view returns (bool isGoalReached) {
+        return donationBalance >= DONATION_GOAL;
+    }
 }
