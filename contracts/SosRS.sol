@@ -3,10 +3,10 @@ pragma solidity ^0.8.19;
 
 contract SosRS {
 
-    address public owner;
+    address payable public owner;
+    bool public isCampaignClosed;
     uint256 public donationBalance;
     mapping(address => uint256) public deposits;
-    bool public isCampaignClosed;
 
     uint128 public constant DONATION_GOAL = 40 ether;
     uint32 public constant DEADLINE = 1720180800;
@@ -21,30 +21,31 @@ contract SosRS {
     }
 
     constructor() {
-        owner = msg.sender;
+        owner = payable(msg.sender);
     }
 
-    function donate(uint256 _amount) payable external {
+    receive() payable external {
         if(block.timestamp >= DEADLINE){ isCampaignClosed = true;}
         require(!isCampaignClosed, "Campaign is no longer active");
-        require(_amount > 0, "Invalid donation amount");
+        require(msg.value > 0, "Invalid donation amount");
 
-        deposits[msg.sender] += _amount;
-        donationBalance += _amount;
-        emit DonationReceived(msg.sender, _amount, block.timestamp);
+        deposits[msg.sender] = msg.value;
+        donationBalance += msg.value;
+        emit DonationReceived(msg.sender, msg.value, block.timestamp);
     }
 
-    function withdraw(uint256 _amount) external onlyOwner {
-        require(donationBalance > 0, "No funds to withdraw");
-        require(_amount > donationBalance, "Insufficient balance");
+    function withdraw(uint256 _amount) payable external onlyOwner {
+        require(donationBalance > 0, "No balance");
+        require(donationBalance >= _amount, "Insufficient balance");
         donationBalance -= _amount;
-        payable(owner).transfer(_amount);
-        emit WithdrawExecuted(owner, _amount, block.timestamp);
+
+        payable(msg.sender).transfer(_amount);
+        emit WithdrawExecuted(msg.sender, _amount, block.timestamp);
     }
 
-    function transferOwnership(address _newOwner) external onlyOwner {
+    function transferOwnership(address payable _newOwner) external onlyOwner {
         require(_newOwner != address(0), "Invalid new owner");
-        address oldOwner = owner;
+        address payable oldOwner = owner;
         owner = _newOwner;
         emit OwnershipTransferred(oldOwner, _newOwner, block.timestamp);
     }
