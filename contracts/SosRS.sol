@@ -37,6 +37,7 @@ contract SosRS {
     function withdraw(uint256 _amount) payable external onlyOwner {
         require(donationBalance > 0, "No balance");
         require(donationBalance >= _amount, "Insufficient balance");
+        require(isCampaignClosed, "Campaign must be closed");
         donationBalance -= _amount;
 
         payable(msg.sender).transfer(_amount);
