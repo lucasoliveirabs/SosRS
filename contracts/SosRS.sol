@@ -29,7 +29,7 @@ contract SosRS {
         require(!isCampaignClosed, "Campaign is no longer active");
         require(msg.value > 0, "Invalid donation amount");
 
-        deposits[msg.sender] = msg.value;
+        deposits[msg.sender] += msg.value;
         donationBalance += msg.value;
         emit DonationReceived(msg.sender, msg.value, block.timestamp);
     }
