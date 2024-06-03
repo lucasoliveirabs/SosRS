@@ -1,75 +1,133 @@
-import {loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
+import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
-import hre from "hardhat";
+import { ethers } from "hardhat";
 
 describe("SosRS", function () {
 
   async function deployFixture() {  // single deploy, independent copies
 
-    const [owner, addr1, addr2] = await hre.ethers.getSigners();
-    const SosRS = await hre.ethers.getContractFactory("SosRS"); 
+    const [owner, addr1, addr2] = await ethers.getSigners();
+    const SosRS = await ethers.getContractFactory("SosRS"); 
     const contract = await SosRS.deploy();  
 
     return { contract, owner, addr1, addr2 };
   }
 
-  describe("donate", async function() {
-    it("Should receive any donation from any address", async function (){
-      const {contract, addr1 } = await loadFixture(deployFixture);
-
-      await contract.connect(addr1).donate(10);
-      expect(await contract.donationBalance()).to.equal(10);
-      expect(await contract.deposits(addr1));
-    });
-
+  describe("receive ", async function() {
     it("Should receive multiple donations from any address", async function (){
-      const {contract, addr1, addr2} = await loadFixture(deployFixture);
+      const {contract, owner, addr1, addr2 } = await loadFixture(deployFixture);
+      let utils = require("ethers");
 
-      await contract.connect(addr1).donate(1);
-      expect(await contract.donationBalance()).to.equal(1);
-      expect(await contract.deposits(addr1.address)).to.equal(1);
-      
-      await contract.connect(addr2).donate(5);
-      expect(await contract.donationBalance()).to.equal(6);
-      expect(await contract.deposits(addr2.address)).to.equal(5);
-    
-      await contract.connect(addr2).donate(2);
-      expect(await contract.donationBalance()).to.equal(8);
-      expect(await contract.deposits(addr2.address)).to.equal(7);
+      await owner.sendTransaction({
+        to: contract,
+        value: utils.parseEther("1.0")
+      });
+      expect(await contract.donationBalance()).to.equal(utils.parseEther("1.0"));
+      expect(await contract.deposits(owner)).to.equal(utils.parseEther("1.0"));
+
+      await addr1.sendTransaction({
+        to: contract,
+        value: utils.parseEther("2.0")
+      });
+      expect(await contract.donationBalance()).to.equal(utils.parseEther("3.0"));
+      expect(await contract.deposits(addr1)).to.equal(utils.parseEther("2.0"));
+
+      await addr1.sendTransaction({
+        to: contract,
+        value: utils.parseEther("3.0")
+      });
+      expect(await contract.donationBalance()).to.equal(utils.parseEther("6.0"));
+      expect(await contract.deposits(addr1)).to.equal(utils.parseEther("5.0"));
+
+      await addr2.sendTransaction({
+        to: contract,
+        value: utils.parseEther("4.0")
+      });
+      expect(await contract.donationBalance()).to.equal(utils.parseEther("10.0"));
+      expect(await contract.deposits(addr2)).to.equal(utils.parseEther("4.0"));
+
+      await addr2.sendTransaction({
+        to: contract,
+        value: utils.parseEther("5.0")
+      });
+      expect(await contract.donationBalance()).to.equal(utils.parseEther("15.0"));
+      expect(await contract.deposits(addr2)).to.equal(utils.parseEther("9.0"));
+
+      await owner.sendTransaction({
+        to: contract,
+        value: utils.parseEther("6.0")
+      });
+      expect(await contract.donationBalance()).to.equal(utils.parseEther("21.0"));
+      expect(await contract.deposits(owner)).to.equal(utils.parseEther("7.0"));
     });
 
-    it("Should emit event with right parameters after donation", async function(){
-      const {contract, addr1, addr2} = await loadFixture(deployFixture);
+    it("Should emit event with right parameters after donation receive", async function(){
+      const {contract, owner, addr1, addr2} = await loadFixture(deployFixture);
+      let utils = require("ethers");
 
-      await contract.connect(addr1).donate(1);
-      let latestBlockTimestamp = (await hre.ethers.provider.getBlock('latest'))?.timestamp;
-      expect(await contract.donate).to.emit(contract, "DonationReceived").withArgs(addr1, 1, latestBlockTimestamp);
+      let transactionHash = await addr1.sendTransaction({
+        to: contract,
+        value: utils.parseEther("3.0")
+      });
+      let latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+      expect(await transactionHash).to.emit(contract, "DonationReceived").withArgs(addr1, utils.parseEther("3.0"), latestBlockTimestamp);
 
-      await contract.connect(addr2).donate(2);
-      latestBlockTimestamp = (await hre.ethers.provider.getBlock('latest'))?.timestamp;
-      expect(await contract.donate).to.emit(contract, "DonationReceived").withArgs(addr2, 2, latestBlockTimestamp);
+      transactionHash = await addr1.sendTransaction({
+        to: contract,
+        value: utils.parseEther("5.0")
+      });
+      latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+      expect(await transactionHash).to.emit(contract, "DonationReceived").withArgs(addr2, utils.parseEther("5.0"), latestBlockTimestamp);
+
+      transactionHash = await addr2.sendTransaction({
+        to: contract,
+        value: utils.parseEther("1.0")
+      });
+      latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+      expect(await transactionHash).to.emit(contract, "DonationReceived").withArgs(addr2, utils.parseEther("1.0"), latestBlockTimestamp);
+
+      transactionHash = await owner.sendTransaction({
+        to: contract,
+        value: utils.parseEther("7.0")
+      });
+      latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+      expect(await transactionHash).to.emit(contract, "DonationReceived").withArgs(owner, utils.parseEther("7.0"), latestBlockTimestamp);
     });
 
-    it("Should be reverted in case of donated amount <= 0", async function(){
-      const {contract} = await loadFixture(deployFixture);
+    it("Should revert in case of donated amount == 0", async function(){
+      const {contract, owner, addr1} = await loadFixture(deployFixture);
+      let utils = require("ethers");
 
-      await expect(contract.donate(0)).to.be.revertedWith("Invalid donation amount");     
+      let transactionHash = owner.sendTransaction({
+        to: contract,
+        value: utils.parseEther("0.0")
+      });
+      await expect(transactionHash).to.be.revertedWith("Invalid donation amount");   
+
+      transactionHash = addr1.sendTransaction({
+        to: contract,
+        value: utils.parseEther("0.0")
+      });
+      await expect(transactionHash).to.be.revertedWith("Invalid donation amount");
     });
 
-    it("Should be reverted in case of donation after campaign closure", async function(){
-      const {contract} = await loadFixture(deployFixture);
+    it("Should revert in case of donation after campaign closure", async function(){
+      const {contract, owner, addr1} = await loadFixture(deployFixture);
+      let utils = require("ethers");
 
       await contract.forceCampaignClosure();
-      await expect(contract.donate(1)).to.be.revertedWith("Campaign is no longer active"); 
-    });
-  });
 
-  describe("withdraw", function () {
-  //withdraw required amount as owner
-  //withdraw multiple times in sequence as owner
+      let transactionHash = owner.sendTransaction({
+        to: contract,
+        value: utils.parseEther("0.0")
+      });
+      await expect(transactionHash).to.be.revertedWith("Campaign is no longer active");     
 
-    it("Should emit event with right parameters after withdraw", async function(){
-
+      transactionHash = addr1.sendTransaction({
+        to: contract,
+        value: utils.parseEther("2.0")
+      });
+      await expect(transactionHash).to.be.revertedWith("Campaign is no longer active"); 
     });
   });
 });
