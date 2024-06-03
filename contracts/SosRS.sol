@@ -25,7 +25,7 @@ contract SosRS {
     }
 
     receive() payable external {
-        if(block.timestamp >= DEADLINE){ isCampaignClosed = true;}
+        if(block.timestamp >= DEADLINE || donationBalance >= DONATION_GOAL){ isCampaignClosed = true;}
         require(!isCampaignClosed, "Campaign is no longer active");
         require(msg.value > 0, "Invalid donation amount");
 
@@ -53,9 +53,5 @@ contract SosRS {
 
     function forceCampaignClosure() external onlyOwner {
         isCampaignClosed = true;
-    }
-
-    function isDonationGoalReached() external view returns (bool isGoalReached) {
-        return donationBalance >= DONATION_GOAL;
     }
 }
