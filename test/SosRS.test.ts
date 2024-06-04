@@ -13,8 +13,8 @@ describe("SosRS", function () {
     return { contract, owner, addr1, addr2 };
   }
 
-  describe("receive ", async function() {
-    it("Should receive multiple donations from any address", async function (){
+  describe("receive", async function() {
+    it("Should receive multiple donations from any address - happy path", async function (){
       const {contract, owner, addr1, addr2 } = await loadFixture(deployFixture);
       let utils = require("ethers");
 
@@ -128,6 +128,100 @@ describe("SosRS", function () {
         value: utils.parseEther("2.0")
       });
       await expect(transactionHash).to.be.revertedWith("Campaign is no longer active"); 
+    });
+  });
+
+  describe("withdraw", async function(){
+    it("Should withdraw multiple orders - happy path ", async function(){
+      const {contract, owner, addr1} = await loadFixture(deployFixture);
+
+      let utils = require("ethers");
+      await addr1.sendTransaction({
+        to: contract,
+        value: utils.parseEther("17.0")
+      });
+      await contract.forceCampaignClosure();
+
+
+      let ownerPreviousBalance = await ethers.provider.getBalance(owner);
+      let latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+      let transactionHash = await contract.connect(owner).withdraw(utils.parseEther("12.0"));
+      let receipt = await transactionHash.wait();
+      if (!receipt || receipt.status !== 1) {
+        throw new Error("Transaction failed or receipt is null");
+      }
+      expect(transactionHash).to.emit(contract, "WithdrawExecuted").withArgs(owner, utils.parseEther("12.0"), latestBlockTimestamp);
+      expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("12.0") - (receipt.gasUsed * receipt.gasPrice));
+      expect((await contract.donationBalance()).toString()).to.equal(utils.parseEther("5.0").toString());
+    
+
+      ownerPreviousBalance = await ethers.provider.getBalance(owner);
+      latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+      transactionHash = await contract.connect(owner).withdraw(utils.parseEther("2.0"));
+      receipt = await transactionHash.wait();
+      if (!receipt || receipt.status !== 1) {
+        throw new Error("Transaction failed or receipt is null");
+      }
+      expect(transactionHash).to.emit(contract, "WithdrawExecuted").withArgs(owner, utils.parseEther("2.0"), latestBlockTimestamp);
+      expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("2.0") - (receipt.gasUsed * receipt.gasPrice));
+      expect((await contract.donationBalance()).toString()).to.equal(utils.parseEther("3.0").toString());
+
+
+      ownerPreviousBalance = await ethers.provider.getBalance(owner);
+      latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+      transactionHash = await contract.connect(owner).withdraw(utils.parseEther("3.0"));
+      receipt = await transactionHash.wait();
+      if (!receipt || receipt.status !== 1) {
+        throw new Error("Transaction failed or receipt is null");
+      }
+      latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+      expect(transactionHash).to.emit(contract, "WithdrawExecuted").withArgs(owner, utils.parseEther("3.0"), latestBlockTimestamp);
+      expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("3.0") - (receipt.gasUsed * receipt.gasPrice));
+      expect((await contract.donationBalance()).toString).to.equal(utils.parseEther("0.0").toString);      
+    });
+    
+    it("Should revert in case of no balance", async function(){
+      const {contract, owner} = await loadFixture(deployFixture);
+      await expect(contract.connect(owner).withdraw(0)).to.be.revertedWith("No balance");         
+    });
+
+    it("Should revert in case of insufficient balance", async function() {
+      const {contract, owner, addr1} = await loadFixture(deployFixture);
+
+      let utils = require("ethers");
+      await addr1.sendTransaction({
+        to: contract,
+        value: utils.parseEther("2.0")
+      });
+      await expect(contract.connect(owner).withdraw(utils.parseEther("10.0"))).to.be.revertedWith("Insufficient balance"); 
+      await expect(contract.connect(owner).withdraw(utils.parseEther("7.0"))).to.be.revertedWith("Insufficient balance"); 
+      await expect(contract.connect(owner).withdraw(utils.parseEther("6.0"))).to.be.revertedWith("Insufficient balance"); 
+    });
+
+    it("Should revert in case of open campaign", async function() {
+      const {contract, owner, addr1} = await loadFixture(deployFixture);
+
+      let utils = require("ethers");
+      await addr1.sendTransaction({
+        to: contract,
+        value: utils.parseEther("20.0")
+      });
+      await expect(contract.connect(owner).withdraw(utils.parseEther("10.0"))).to.be.revertedWith("Campaign must be closed"); 
+      await expect(contract.connect(owner).withdraw(utils.parseEther("7.0"))).to.be.revertedWith("Campaign must be closed"); 
+      await expect(contract.connect(owner).withdraw(utils.parseEther("6.0"))).to.be.revertedWith("Campaign must be closed"); 
+    });
+
+    it("Should revert in case of non-owner attempt", async function() {
+      const {contract, addr1, addr2} = await loadFixture(deployFixture);
+
+      let utils = require("ethers");
+      await addr1.sendTransaction({
+        to: contract,
+        value: utils.parseEther("20.0")
+      });
+      await expect(contract.connect(addr1).withdraw(utils.parseEther("10.0"))).to.be.revertedWith("Only owner"); 
+      await expect(contract.connect(addr2).withdraw(utils.parseEther("7.0"))).to.be.revertedWith("Only owner"); 
+      await expect(contract.connect(addr2).withdraw(utils.parseEther("6.0"))).to.be.revertedWith("Only owner"); 
     });
   });
 });
