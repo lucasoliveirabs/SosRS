@@ -1,5 +1,6 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
+import { ContractTransactionReceipt } from "ethers";
 import { ethers } from "hardhat";
 
 describe("SosRS", function () {
@@ -142,41 +143,35 @@ describe("SosRS", function () {
       });
       await contract.forceCampaignClosure();
 
+      function getGasCost(receipt: ContractTransactionReceipt | null){
+        if (!receipt || receipt.status !== 1) {
+          throw new Error("Transaction failed or receipt is null");
+        }
+        return receipt.gasUsed * receipt.gasPrice;
+      }
 
       let ownerPreviousBalance = await ethers.provider.getBalance(owner);
       let latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
       let transactionHash = await contract.connect(owner).withdraw(utils.parseEther("12.0"));
-      let receipt = await transactionHash.wait();
-      if (!receipt || receipt.status !== 1) {
-        throw new Error("Transaction failed or receipt is null");
-      }
       expect(transactionHash).to.emit(contract, "WithdrawExecuted").withArgs(owner, utils.parseEther("12.0"), latestBlockTimestamp);
-      expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("12.0") - (receipt.gasUsed * receipt.gasPrice));
+      expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("12.0") - getGasCost(await transactionHash.wait()));
       expect((await contract.donationBalance()).toString()).to.equal(utils.parseEther("5.0").toString());
     
 
       ownerPreviousBalance = await ethers.provider.getBalance(owner);
       latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
       transactionHash = await contract.connect(owner).withdraw(utils.parseEther("2.0"));
-      receipt = await transactionHash.wait();
-      if (!receipt || receipt.status !== 1) {
-        throw new Error("Transaction failed or receipt is null");
-      }
       expect(transactionHash).to.emit(contract, "WithdrawExecuted").withArgs(owner, utils.parseEther("2.0"), latestBlockTimestamp);
-      expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("2.0") - (receipt.gasUsed * receipt.gasPrice));
+      expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("2.0") - getGasCost(await transactionHash.wait()));
       expect((await contract.donationBalance()).toString()).to.equal(utils.parseEther("3.0").toString());
 
 
       ownerPreviousBalance = await ethers.provider.getBalance(owner);
       latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
       transactionHash = await contract.connect(owner).withdraw(utils.parseEther("3.0"));
-      receipt = await transactionHash.wait();
-      if (!receipt || receipt.status !== 1) {
-        throw new Error("Transaction failed or receipt is null");
-      }
       latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
       expect(transactionHash).to.emit(contract, "WithdrawExecuted").withArgs(owner, utils.parseEther("3.0"), latestBlockTimestamp);
-      expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("3.0") - (receipt.gasUsed * receipt.gasPrice));
+      expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("3.0") - getGasCost(await transactionHash.wait()));
       expect((await contract.donationBalance()).toString).to.equal(utils.parseEther("0.0").toString);      
     });
     
