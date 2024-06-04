@@ -169,7 +169,6 @@ describe("SosRS", function () {
       ownerPreviousBalance = await ethers.provider.getBalance(owner);
       latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
       transactionHash = await contract.connect(owner).withdraw(utils.parseEther("3.0"));
-      latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
       expect(transactionHash).to.emit(contract, "WithdrawExecuted").withArgs(owner, utils.parseEther("3.0"), latestBlockTimestamp);
       expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("3.0") - getGasCost(await transactionHash.wait()));
       expect((await contract.donationBalance()).toString).to.equal(utils.parseEther("0.0").toString);      
