@@ -243,4 +243,18 @@ describe("SosRS", function () {
       await expect(contract.connect(owner).transferOwnership(ethers.ZeroAddress)).to.be.revertedWith("Invalid new owner");
     });
   });
+
+  describe("forceCampaignClosure", async function() {
+    it("Should close the campaign - happy path", async function(){
+      const {contract, owner} = await loadFixture(deployFixture);
+      await contract.connect(owner).forceCampaignClosure();
+      expect(await contract.isCampaignClosed()).to.be.true;
+    });
+
+    it("Should revert in case of non-owner attempt", async function(){
+      const {contract, addr1, addr2} = await loadFixture(deployFixture);
+      await expect(contract.connect(addr1).forceCampaignClosure()).to.be.revertedWith("Only owner");
+      await expect(contract.connect(addr2).forceCampaignClosure()).to.be.revertedWith("Only owner");
+    });
+  });
 });
