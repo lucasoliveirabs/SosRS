@@ -1,7 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
-import { ContractTransactionReceipt } from "ethers";
 import { ethers } from "hardhat";
+import { ContractTransactionReceipt } from "ethers";
 
 describe("SosRS", function () {
 
@@ -216,6 +216,31 @@ describe("SosRS", function () {
       await expect(contract.connect(addr1).withdraw(utils.parseEther("10.0"))).to.be.revertedWith("Only owner"); 
       await expect(contract.connect(addr2).withdraw(utils.parseEther("7.0"))).to.be.revertedWith("Only owner"); 
       await expect(contract.connect(addr2).withdraw(utils.parseEther("6.0"))).to.be.revertedWith("Only owner"); 
+    });
+  });
+
+  describe("transferOwnership", async function(){
+    it("Should transfer ownety - happy path", async function(){
+      const {contract, owner, addr1, addr2} = await loadFixture(deployFixture);
+
+      let transactionHash = await contract.connect(owner).transferOwnership(addr1);
+      let latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+      await expect(transactionHash).to.emit(contract, "OwnershipTransferred").withArgs(owner, addr1, latestBlockTimestamp);
+      
+      transactionHash = await contract.connect(addr1).transferOwnership(addr2);
+      latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+      await expect(transactionHash).to.emit(contract, "OwnershipTransferred").withArgs(addr1, addr2, latestBlockTimestamp);
+    });
+
+    it("Should revert in case of non-owner attempt", async function(){
+      const {contract, addr1, addr2} = await loadFixture(deployFixture);
+      await expect(contract.connect(addr1).transferOwnership(addr2)).to.be.revertedWith("Only owner");
+      await expect(contract.connect(addr2).transferOwnership(addr1)).to.be.revertedWith("Only owner");
+    });
+
+    it("Should revert in case of invalid new owner address ", async function(){
+      const {contract, owner} = await loadFixture(deployFixture);
+      await expect(contract.connect(owner).transferOwnership(ethers.ZeroAddress)).to.be.revertedWith("Invalid new owner");
     });
   });
 });
