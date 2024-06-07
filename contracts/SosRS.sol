@@ -16,8 +16,9 @@ contract SosRS {
 
     uint256 public id;
     address payable public owner;
-    uint128 public immutable donationGoal;
     uint32 public immutable deadline;
+    uint128 public immutable donationGoal;
+    bool public isCampaignClosed;
     bytes32 public campaignName;
     bytes32 public objectivesHash;
     bytes32 public descriptionHash;
@@ -25,7 +26,6 @@ contract SosRS {
     bytes32 public city;
     bytes32 public country;
     bytes32 public imageHash;
-    bool public isCampaignClosed;
     uint256 public donationBalance;
     mapping(address => uint256) public deposits;
 
