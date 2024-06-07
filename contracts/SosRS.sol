@@ -18,12 +18,12 @@ contract SosRS {
     address payable public owner;
     uint128 public immutable donationGoal;
     uint32 public immutable deadline;
-    string public campaignName;
-    string public objectives;
-    string public description;
-    string public contact;
-    string public city;
-    string public country;
+    bytes32 public campaignName;
+    bytes32 public objectivesHash;
+    bytes32 public descriptionHash;
+    bytes32 public contact;
+    bytes32 public city;
+    bytes32 public country;
     bytes32 public imageHash;
     bool public isCampaignClosed;
     uint256 public donationBalance;
@@ -38,14 +38,14 @@ contract SosRS {
         _;
     }
 
-    constructor(uint256 _id, address _owner, uint128 _donationGoal, uint32 _deadline, string memory _campaignName, string memory _objectives, string memory _description, string memory _contact, string memory _city, string memory _country, bytes32 _imageHash) {
+    constructor(uint256 _id, address _owner, uint128 _donationGoal, uint32 _deadline, bytes32 _campaignName, bytes32 _objectivesHash, bytes32 _descriptionHash, bytes32 _contact, bytes32 _city, bytes32 _country, bytes32 _imageHash) {
         id = _id;
         owner = payable(_owner);
         deadline = _deadline;
         donationGoal = _donationGoal * 1 ether;
         campaignName = _campaignName;
-        objectives = _objectives;
-        description = _description;
+        objectivesHash = _objectivesHash;
+        descriptionHash = _descriptionHash;
         contact = _contact;
         city = _city;
         country = _country;
