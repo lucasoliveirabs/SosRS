@@ -3,13 +3,20 @@ pragma solidity ^0.8.19;
 
 contract SosRS {
 
+    uint256 public id;
     address payable public owner;
+    uint128 public immutable donationGoal;
+    uint32 public immutable deadline;
+    string public campaignName;
+    string public objectives;
+    string public description;
+    string public contact;
+    string public city;
+    string public country;
+    bytes32 public imageHash;
     bool public isCampaignClosed;
     uint256 public donationBalance;
     mapping(address => uint256) public deposits;
-
-    uint128 public constant DONATION_GOAL = 40 ether;
-    uint32 public constant DEADLINE = 1720180800;
 
     event DonationReceived(address indexed contributor, uint256 amount, uint256 timestamp);
     event WithdrawExecuted(address indexed recipient, uint256 amount, uint256 timestamp);
@@ -20,12 +27,22 @@ contract SosRS {
         _;
     }
 
-    constructor() {
-        owner = payable(msg.sender);
+    constructor(uint256 _id, address _owner, uint128 _donationGoal, uint32 _deadline, string memory _campaignName, string memory _objectives, string memory _description, string memory _contact, string memory _city, string memory _country, bytes32 _imageHash) {
+        id = _id;
+        owner = payable(_owner);
+        deadline = _deadline;
+        donationGoal = _donationGoal * 1 ether;
+        campaignName = _campaignName;
+        objectives = _objectives;
+        description = _description;
+        contact = _contact;
+        city = _city;
+        country = _country;
+        imageHash = _imageHash;
     }
 
     receive() payable external {
-        if(block.timestamp >= DEADLINE || donationBalance >= DONATION_GOAL){ isCampaignClosed = true;}
+        if(block.timestamp >= deadline || donationBalance >= donationGoal){ isCampaignClosed = true;}
         require(!isCampaignClosed, "Campaign is no longer active");
         require(msg.value > 0, "Invalid donation amount");
 
