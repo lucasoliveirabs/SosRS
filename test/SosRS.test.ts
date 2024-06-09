@@ -304,3 +304,184 @@ describe("SosRSFactory", function() {
     });
   });
 });
+
+describe("Integration", function() {
+
+  let SoSRS; 
+
+  async function deployFixture() {
+    const [owner, addr1, addr2] = await ethers.getSigners();
+    const SosRSFactory = await ethers.getContractFactory("SosRSFactory"); 
+    const sosRSFactoryContract = await SosRSFactory.deploy();  
+    return { sosRSFactoryContract, owner, addr1, addr2 };
+  }
+
+  it("Should instantiate multiple campaign contracts and map their address by id", async function() {
+    const {sosRSFactoryContract, owner, addr1, addr2} = await loadFixture(deployFixture);
+    let utils = require("ethers");
+
+    function getGasCost(receipt: ContractTransactionReceipt | null){
+      if (!receipt || receipt.status !== 1) {
+        throw new Error("Transaction failed or receipt is null");
+      }
+      return receipt.gasUsed * receipt.gasPrice;
+    }
+
+    let transactionResponse = await sosRSFactoryContract.createCampaign(owner, 40, 1720180800, "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C");
+    //new contract attributes
+    expect(await sosRSFactoryContract.id()).to.equal(1);
+    SoSRS = await ethers.getContractAt("SosRS", (await sosRSFactoryContract.campaigns(1)).toString());
+    expect(await SoSRS.id()).to.equal(await sosRSFactoryContract.id());
+    expect(await SoSRS.owner()).to.equal(owner);
+    expect(await SoSRS.deadline()).to.equal(1720180800);
+    expect(await SoSRS.donationGoal()).to.equal(utils.parseEther("40.0"));
+    expect(await SoSRS.campaignName()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000");
+    expect((await SoSRS.objectivesHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    expect((await SoSRS.descriptionHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    expect((await SoSRS.contact()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.city()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.country()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.imageHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    let latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+    expect(await transactionResponse).to.emit(sosRSFactoryContract, "CampaignCreated").withArgs(owner, 1, sosRSFactoryContract.campaigns(1), latestBlockTimestamp);
+    //new contract functionalities
+    //receive() 
+    await owner.sendTransaction({
+      to: SoSRS,
+      value: utils.parseEther("1.0")
+    });
+    expect(await SoSRS.donationBalance()).to.equal(utils.parseEther("1.0"));
+    expect(await SoSRS.deposits(owner)).to.equal(utils.parseEther("1.0"));
+
+    //withdraw()
+    await SoSRS.connect(owner).forceCampaignClosure();
+    let ownerPreviousBalance = await ethers.provider.getBalance(owner);
+    latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+    transactionResponse = await SoSRS.connect(owner).withdraw(utils.parseEther("1.0"));
+    expect(transactionResponse).to.emit(SoSRS, "WithdrawExecuted").withArgs(owner, utils.parseEther("1.0"), latestBlockTimestamp);
+    expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("1.0") - getGasCost(await transactionResponse.wait()));
+    expect((await SoSRS.donationBalance()).toString()).to.equal(utils.parseEther("0.0").toString());
+        
+
+
+    transactionResponse = await sosRSFactoryContract.createCampaign(owner, 100, 1720200800, "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C");
+    //new contract attributes
+    expect(await sosRSFactoryContract.id()).to.equal(2);
+    SoSRS = await ethers.getContractAt("SosRS", (await sosRSFactoryContract.campaigns(2)).toString());
+    expect(await SoSRS.id()).to.equal(await sosRSFactoryContract.id());
+    expect(await SoSRS.owner()).to.equal(owner);
+    expect(await SoSRS.deadline()).to.equal(1720200800);
+    expect(await SoSRS.donationGoal()).to.equal(utils.parseEther("100.0"));
+    expect(await SoSRS.campaignName()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000");
+    expect((await SoSRS.objectivesHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    expect((await SoSRS.descriptionHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    expect((await SoSRS.contact()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.city()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.country()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.imageHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    expect(await transactionResponse).to.emit(sosRSFactoryContract, "CampaignCreated").withArgs(owner, 2, sosRSFactoryContract.campaigns(2), (await ethers.provider.getBlock('latest'))?.timestamp);
+    //new contract functionalities
+    //receive() 
+    await owner.sendTransaction({
+      to: SoSRS,
+      value: utils.parseEther("5.0")
+    });
+    expect(await SoSRS.donationBalance()).to.equal(utils.parseEther("5.0"));
+    expect(await SoSRS.deposits(owner)).to.equal(utils.parseEther("5.0"));
+
+    //withdraw()
+    await SoSRS.connect(owner).forceCampaignClosure();
+    ownerPreviousBalance = await ethers.provider.getBalance(owner);
+    latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+    transactionResponse = await SoSRS.connect(owner).withdraw(utils.parseEther("4.0"));
+    expect(transactionResponse).to.emit(SoSRS, "WithdrawExecuted").withArgs(owner, utils.parseEther("4.0"), latestBlockTimestamp);
+    expect(await ethers.provider.getBalance(owner)).to.equal(ownerPreviousBalance + utils.parseEther("4.0") - getGasCost(await transactionResponse.wait()));
+    expect((await SoSRS.donationBalance()).toString()).to.equal(utils.parseEther("1.0").toString());
+    
+
+
+    transactionResponse = await sosRSFactoryContract.createCampaign(addr1, 20, 2020180800, "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C");
+    //new contract attributes
+    expect(await sosRSFactoryContract.id()).to.equal(3);
+    SoSRS = await ethers.getContractAt("SosRS", (await sosRSFactoryContract.campaigns(3)).toString());
+    expect(await SoSRS.id()).to.equal(await sosRSFactoryContract.id());
+    expect(await SoSRS.owner()).to.equal(addr1);
+    expect(await SoSRS.deadline()).to.equal(2020180800);
+    expect(await SoSRS.donationGoal()).to.equal(utils.parseEther("20.0"));
+    expect(await SoSRS.campaignName()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000");
+    expect((await SoSRS.objectivesHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    expect((await SoSRS.descriptionHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    expect((await SoSRS.contact()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.city()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.country()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.imageHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    expect(await transactionResponse).to.emit(sosRSFactoryContract, "CampaignCreated").withArgs(addr1, 3, sosRSFactoryContract.campaigns(3), (await ethers.provider.getBlock('latest'))?.timestamp);
+    //new contract functionalities
+    //receive() 
+    await addr2.sendTransaction({
+      to: SoSRS,
+      value: utils.parseEther("15.0")
+    });
+    expect(await SoSRS.donationBalance()).to.equal(utils.parseEther("15.0"));
+    expect(await SoSRS.deposits(addr2)).to.equal(utils.parseEther("15.0"));
+
+    //withdraw()
+    await SoSRS.connect(addr1).forceCampaignClosure();
+    ownerPreviousBalance = await ethers.provider.getBalance(addr1);
+    latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+    transactionResponse = await SoSRS.connect(addr1).withdraw(utils.parseEther("5.0"));
+    expect(transactionResponse).to.emit(SoSRS, "WithdrawExecuted").withArgs(addr1, utils.parseEther("5.0"), latestBlockTimestamp);
+    expect(await ethers.provider.getBalance(addr1)).to.equal(ownerPreviousBalance + utils.parseEther("5.0") - getGasCost(await transactionResponse.wait()));
+    expect((await SoSRS.donationBalance()).toString()).to.equal(utils.parseEther("10.0").toString());
+    
+
+
+    transactionResponse = await sosRSFactoryContract.createCampaign(addr2, 150, 1920180800, "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x48656c6c6f20576f726c64210000000000000000000000000000000000000000", "0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C");
+    //new contract attributes
+    expect(await sosRSFactoryContract.id()).to.equal(4);
+    SoSRS = await ethers.getContractAt("SosRS", (await sosRSFactoryContract.campaigns(4)).toString());
+    expect(await SoSRS.id()).to.equal(await sosRSFactoryContract.id());
+    expect(await SoSRS.owner()).to.equal(addr2);
+    expect(await SoSRS.deadline()).to.equal(1920180800);
+    expect(await SoSRS.donationGoal()).to.equal(utils.parseEther("150.0"));
+    expect(await SoSRS.campaignName()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000");
+    expect((await SoSRS.objectivesHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    expect((await SoSRS.descriptionHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    expect((await SoSRS.contact()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.city()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.country()).toLowerCase()).to.equal("0x48656c6c6f20576f726c64210000000000000000000000000000000000000000".toLowerCase());
+    expect((await SoSRS.imageHash()).toLowerCase()).to.equal("0x64EC88CA00B268E5BA1A35678A1B5316D212F4F366B2477232534A8AECA37F3C".toLowerCase());
+    expect(await transactionResponse).to.emit(sosRSFactoryContract, "CampaignCreated").withArgs(addr2, 4, sosRSFactoryContract.campaigns(4), (await ethers.provider.getBlock('latest'))?.timestamp);
+    //new contract functionalities
+    //receive() 
+    await addr1.sendTransaction({
+      to: SoSRS,
+      value: utils.parseEther("35.0")
+    });
+    expect(await SoSRS.donationBalance()).to.equal(utils.parseEther("35.0"));
+    expect(await SoSRS.deposits(addr1)).to.equal(utils.parseEther("35.0"));
+
+    //withdraw()
+    await SoSRS.connect(addr2).forceCampaignClosure();
+    ownerPreviousBalance = await ethers.provider.getBalance(addr2);
+    latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+    transactionResponse = await SoSRS.connect(addr2).withdraw(utils.parseEther("15.0"));
+    expect(transactionResponse).to.emit(SoSRS, "WithdrawExecuted").withArgs(addr2, utils.parseEther("15.0"), latestBlockTimestamp);
+    expect(await ethers.provider.getBalance(addr2)).to.equal(ownerPreviousBalance + utils.parseEther("15.0") - getGasCost(await transactionResponse.wait()));
+    expect((await SoSRS.donationBalance()).toString()).to.equal(utils.parseEther("20.0").toString());
+
+    ownerPreviousBalance = await ethers.provider.getBalance(addr2);
+    latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+    transactionResponse = await SoSRS.connect(addr2).withdraw(utils.parseEther("15.0"));
+    expect(transactionResponse).to.emit(SoSRS, "WithdrawExecuted").withArgs(addr2, utils.parseEther("15.0"), latestBlockTimestamp);
+    expect(await ethers.provider.getBalance(addr2)).to.equal(ownerPreviousBalance + utils.parseEther("15.0") - getGasCost(await transactionResponse.wait()));
+    expect((await SoSRS.donationBalance()).toString()).to.equal(utils.parseEther("5.0").toString());
+    
+    ownerPreviousBalance = await ethers.provider.getBalance(addr2);
+    latestBlockTimestamp = (await ethers.provider.getBlock('latest'))?.timestamp;
+    transactionResponse = await SoSRS.connect(addr2).withdraw(utils.parseEther("5.0"));
+    expect(transactionResponse).to.emit(SoSRS, "WithdrawExecuted").withArgs(addr2, utils.parseEther("5.0"), latestBlockTimestamp);
+    expect(await ethers.provider.getBalance(addr2)).to.equal(ownerPreviousBalance + utils.parseEther("5.0") - getGasCost(await transactionResponse.wait()));
+    expect((await SoSRS.donationBalance()).toString()).to.equal(utils.parseEther("0.0").toString());
+  });
+});
